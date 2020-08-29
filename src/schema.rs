@@ -12,6 +12,16 @@ table! {
 }
 
 table! {
+    staff_hours (staff_hours_id) {
+        staff_hours_id -> Int4,
+        staff_id -> Int4,
+        day_of_week -> Int4,
+        start_time -> Nullable<Time>,
+        end_time -> Nullable<Time>,
+    }
+}
+
+table! {
     store (store_id) {
         store_id -> Int4,
         name -> Varchar,
@@ -42,8 +52,11 @@ table! {
     }
 }
 
+joinable!(staff_hours -> staff (staff_id));
+
 allow_tables_to_appear_in_same_query!(
     staff,
+    staff_hours,
     store,
     store_address,
     store_hours,

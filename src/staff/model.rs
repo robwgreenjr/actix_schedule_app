@@ -1,8 +1,7 @@
 use crate::db;
 use crate::api_error::ApiError;
-use crate::{
-    schema::staff::{self, dsl::*}
-};
+use crate::{schema::staff::{self, dsl::*}, schema::staff_hours::{self, dsl::*}};
+use chrono::{NaiveTime};
 use crate::diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +22,9 @@ pub struct StaffCreate {
     pub calendar_color: String
 }
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Queryable)]
+#[derive(Eq, PartialEq, Identifiable, Serialize, Deserialize, Queryable)]
+#[primary_key(staff_id)]
+#[table_name = "staff"]
 pub struct Staff {
     pub staff_id: i32,
     pub first_name: String,
@@ -35,10 +36,37 @@ pub struct Staff {
     pub calendar_color: Option<String>
 }
 
+#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
+#[table_name = "staff_hours"]
+pub struct StaffHoursCreate {
+    pub staff_id: i32,
+    pub day_of_week: i32,
+    pub start_time: Option<NaiveTime>,
+    pub end_time: Option<NaiveTime>
+}
+
+#[derive(Identifiable, Associations, Serialize, Deserialize, Queryable, Debug, Copy, Clone)]
+#[belongs_to(Staff)]
+#[primary_key(staff_hours_id)]
+#[table_name = "staff_hours"]
+pub struct StaffHours {
+    pub staff_hours_id: i32,
+    pub staff_id: i32,
+    pub day_of_week: i32,
+    pub start_time: Option<NaiveTime>,
+    pub end_time: Option<NaiveTime>
+}
+
+#[derive(Serialize, Deserialize, Queryable)]
+pub struct StaffWithHours {
+    pub staff: Staff,
+    pub staff_hours: Vec<StaffHours>
+}
+
 impl Staff {
     pub fn find_all() -> QueryResult<Vec<Self>> {
         let conn = db::establish_connection();
-        staff.order(staff_id.asc()).load::<Self>(&conn)
+        staff.order(staff::staff_id.asc()).load::<Self>(&conn)
     }
 
     pub fn find(id: i32) -> QueryResult<Self> {
@@ -47,10 +75,60 @@ impl Staff {
         staff.filter(staff::staff_id.eq(id)).first::<Self>(&conn)
     }
 
-    pub fn create(staff_create: StaffCreate) -> Result<Self, ApiError> {
+    pub fn find_all_staff_hours() -> QueryResult<Vec<StaffWithHours>> {
         let conn = db::establish_connection();
 
-        let staff_created = diesel::insert_into(staff::table).values(staff_create).get_result(&conn)?;
+        let staff_members = staff::table.load::<Staff>(&conn)?;
+        let staff_hours_list = StaffHours::belonging_to(&staff_members).load::<StaffHours>(&conn)?.grouped_by(&staff_members);
+
+        let mut staff_final_list: Vec<StaffWithHours> = vec![];
+
+        for x in staff_members {
+            let current_staff = StaffWithHours {
+                staff: x,
+                staff_hours: staff_hours_list[0].clone(),
+            };
+
+            staff_final_list.push(current_staff);
+        }
+        
+        Ok(staff_final_list)
+    }
+
+    pub fn find_staff_hours(id: i32) -> QueryResult<StaffWithHours> {
+        let conn = db::establish_connection();
+
+        let staff_member = staff.filter(staff::staff_id.eq(id)).first::<Self>(&conn)?;
+        let staff_member_hours = staff_hours.filter(staff_hours::staff_id.eq(id)).load::<StaffHours>(&conn)?;
+
+        let staff_hour = StaffWithHours {
+            staff: staff_member,
+            staff_hours: staff_member_hours,
+        };
+
+        Ok(staff_hour)
+    }
+
+    pub fn create(staff_create: StaffCreate) -> QueryResult<Self> {
+        let conn = db::establish_connection();
+
+        let staff_created: Self = diesel::insert_into(staff::table).values(staff_create).get_result(&conn)?;
+
+        // generate staff hours
+        let mut hours_list: Vec<StaffHoursCreate> = vec![];
+
+        for x in 0..7 {
+            let day_hours = StaffHoursCreate {
+                staff_id: staff_created.staff_id,
+                day_of_week: x,
+                start_time: None,
+                end_time: None,
+            };
+
+            hours_list.push(day_hours);
+        }
+
+        diesel::insert_into(staff_hours::table).values(hours_list).execute(&conn)?;
 
         Ok(staff_created)
     }
@@ -68,6 +146,9 @@ impl Staff {
 
     pub fn delete(id: i32) -> Result<usize, ApiError> {
         let conn = db::establish_connection();
+
+        // also make sure to delete other staff data
+        diesel::delete(staff_hours::table).filter(staff_hours::staff_id.eq(id)).execute(&conn)?;
 
         let res = diesel::delete(
                 staff::table
