@@ -1,5 +1,5 @@
 use crate::api_error::ApiError;
-use crate::staff::{Staff, StaffCreate, StaffId};
+use crate::staff::{Staff, StaffCreate, StaffId, StaffHourId ,StaffHoursCreate};
 use actix_web::{get, post, put, delete, web, HttpResponse};
 use serde_json::json;
 
@@ -39,6 +39,18 @@ async fn update(id: web::Path<StaffId>, staff: web::Json<StaffCreate>) -> Result
     Ok(HttpResponse::Ok().json(staff))
 }
 
+#[put("/staff_hours")]
+async fn update_hours(staff_hours: web::Json<Vec<StaffHoursCreate>>) -> Result<HttpResponse, ApiError> {
+    let staff = Staff::update_hours(staff_hours.into_inner())?;
+    Ok(HttpResponse::Ok().json(staff))
+}
+
+#[put("/staff_hours/{staff_hour_id}")]
+async fn update_one_hour(id: web::Path<StaffHourId>, staff_hours: web::Json<StaffHoursCreate>) -> Result<HttpResponse, ApiError> {
+    let staff = Staff::update_one_hour(id.staff_hour_id, staff_hours.into_inner())?;
+    Ok(HttpResponse::Ok().json(staff))
+}
+
 #[delete("/staff/{staff_id}")]
 async fn delete(id: web::Path<StaffId>) -> Result<HttpResponse, ApiError> {
     let staff_deleted = Staff::delete(id.staff_id)?;
@@ -52,5 +64,7 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(find_staff_hours);
     cfg.service(create);
     cfg.service(update);
+    cfg.service(update_one_hour);
+    cfg.service(update_hours);
     cfg.service(delete);
 }

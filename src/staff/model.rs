@@ -10,6 +10,11 @@ pub struct StaffId {
     pub staff_id: i32
 }
 
+#[derive(Deserialize)]
+pub struct StaffHourId {
+    pub staff_hour_id: i32
+}
+
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[table_name = "staff"]
 pub struct StaffCreate {
@@ -45,7 +50,7 @@ pub struct StaffHoursCreate {
     pub end_time: Option<NaiveTime>
 }
 
-#[derive(Identifiable, Associations, Serialize, Deserialize, Queryable, Debug, Copy, Clone)]
+#[derive(Identifiable, Associations, Serialize, Deserialize, Queryable, AsChangeset, Debug, Copy, Clone)]
 #[belongs_to(Staff)]
 #[primary_key(staff_hours_id)]
 #[table_name = "staff_hours"]
@@ -83,13 +88,15 @@ impl Staff {
 
         let mut staff_final_list: Vec<StaffWithHours> = vec![];
 
-        for x in staff_members {
+        let mut temp_iter = 0;
+        for member in staff_members {
             let current_staff = StaffWithHours {
-                staff: x,
-                staff_hours: staff_hours_list[0].clone(),
+                staff: member,
+                staff_hours: staff_hours_list[temp_iter].clone(),
             };
 
             staff_final_list.push(current_staff);
+            temp_iter += 1;
         }
         
         Ok(staff_final_list)
@@ -142,6 +149,27 @@ impl Staff {
             .get_result(&conn)?;
 
         Ok(staff_updated)
+    }
+
+    pub fn update_one_hour(id: i32, staff_hour: StaffHoursCreate) -> Result<StaffHours, ApiError> {
+        let conn = db::establish_connection();
+
+        let staff_hour_updated = diesel::update(staff_hours::table)
+            .filter(staff_hours::staff_hours_id.eq(id))
+            .set(staff_hour)
+            .get_result(&conn)?;
+
+        Ok(staff_hour_updated)
+    }
+
+    pub fn update_hours(staff_hours_update: Vec<StaffHoursCreate>) -> Result<(), ApiError> {
+        let conn = db::establish_connection();
+
+        for staff_member in staff_hours_update {
+            diesel::update(staff_hours::table).filter(staff_hours::staff_id.eq(staff_member.staff_id)).filter(staff_hours::day_of_week.eq(staff_member.day_of_week)).set(staff_member).execute(&conn);
+        }
+
+        Ok(())
     }
 
     pub fn delete(id: i32) -> Result<usize, ApiError> {
