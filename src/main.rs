@@ -13,6 +13,7 @@ mod api_error;
 mod db;
 mod schema;
 mod staff;
+mod store;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -23,6 +24,7 @@ async fn main() -> std::io::Result<()> {
     let mut server = HttpServer::new(|| {
         App::new()
             .configure(staff::init_routes)
+            .configure(store::init_routes)
     });
 
     server = match listenfd.take_tcp_listener(0)? {

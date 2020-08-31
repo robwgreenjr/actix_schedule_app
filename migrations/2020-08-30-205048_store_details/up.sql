@@ -1,8 +1,6 @@
--- Your SQL goes here
 CREATE TABLE store (
   store_id SERIAL PRIMARY KEY,
-  name VARCHAR NOT NULL,
-  store_address_id INT NOT NULL
+  name VARCHAR NOT NULL
 );
 
 CREATE TABLE store_hours (

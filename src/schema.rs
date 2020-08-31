@@ -25,7 +25,6 @@ table! {
     store (store_id) {
         store_id -> Int4,
         name -> Varchar,
-        store_address_id -> Int4,
     }
 }
 

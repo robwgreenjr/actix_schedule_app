@@ -84,7 +84,9 @@ impl Staff {
         let conn = db::establish_connection();
 
         let staff_members = staff::table.load::<Staff>(&conn)?;
-        let staff_hours_list = StaffHours::belonging_to(&staff_members).load::<StaffHours>(&conn)?.grouped_by(&staff_members);
+        let staff_hours_list = StaffHours::belonging_to(&staff_members)
+            .load::<StaffHours>(&conn)?
+            .grouped_by(&staff_members);
 
         let mut staff_final_list: Vec<StaffWithHours> = vec![];
 
@@ -106,7 +108,9 @@ impl Staff {
         let conn = db::establish_connection();
 
         let staff_member = staff.filter(staff::staff_id.eq(id)).first::<Self>(&conn)?;
-        let staff_member_hours = staff_hours.filter(staff_hours::staff_id.eq(id)).load::<StaffHours>(&conn)?;
+        let staff_member_hours = staff_hours
+            .filter(staff_hours::staff_id.eq(id))
+            .load::<StaffHours>(&conn)?;
 
         let staff_hour = StaffWithHours {
             staff: staff_member,
@@ -119,7 +123,9 @@ impl Staff {
     pub fn create(staff_create: StaffCreate) -> QueryResult<Self> {
         let conn = db::establish_connection();
 
-        let staff_created: Self = diesel::insert_into(staff::table).values(staff_create).get_result(&conn)?;
+        let staff_created: Self = diesel::insert_into(staff::table)
+            .values(staff_create)
+            .get_result(&conn)?;
 
         // generate staff hours
         let mut hours_list: Vec<StaffHoursCreate> = vec![];
@@ -166,7 +172,10 @@ impl Staff {
         let conn = db::establish_connection();
 
         for staff_member in staff_hours_update {
-            diesel::update(staff_hours::table).filter(staff_hours::staff_id.eq(staff_member.staff_id)).filter(staff_hours::day_of_week.eq(staff_member.day_of_week)).set(staff_member).execute(&conn);
+            diesel::update(staff_hours::table)
+                .filter(staff_hours::staff_id.eq(staff_member.staff_id))
+                .filter(staff_hours::day_of_week.eq(staff_member.day_of_week))
+                .set(staff_member).execute(&conn);
         }
 
         Ok(())
@@ -176,7 +185,9 @@ impl Staff {
         let conn = db::establish_connection();
 
         // also make sure to delete other staff data
-        diesel::delete(staff_hours::table).filter(staff_hours::staff_id.eq(id)).execute(&conn)?;
+        diesel::delete(staff_hours::table)
+            .filter(staff_hours::staff_id.eq(id))
+            .execute(&conn)?;
 
         let res = diesel::delete(
                 staff::table
