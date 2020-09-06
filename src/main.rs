@@ -14,6 +14,7 @@ mod db;
 mod schema;
 mod staff;
 mod store;
+mod service;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -25,6 +26,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .configure(staff::init_routes)
             .configure(store::init_routes)
+            .configure(service::init_routes)
     });
 
     server = match listenfd.take_tcp_listener(0)? {
