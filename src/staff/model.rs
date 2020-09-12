@@ -1,9 +1,11 @@
 use crate::db;
 use crate::api_error::ApiError;
-use crate::{schema::staff::{self, dsl::*}, schema::staff_hours::{self, dsl::*}};
+use crate::{schema::staff::{self, dsl::*}, schema::staff_hours::{self, dsl::*}, schema::staff_service::{self, dsl::*}};
 use chrono::{NaiveTime};
 use crate::diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+
+pub use crate::service::model::{FullService};
 
 #[derive(Deserialize)]
 pub struct StaffId {
@@ -13,6 +15,11 @@ pub struct StaffId {
 #[derive(Deserialize)]
 pub struct StaffHourId {
     pub staff_hour_id: i32
+}
+
+#[derive(Deserialize)]
+pub struct StaffServiceId {
+    pub staff_service_id: i32
 }
 
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
@@ -25,6 +32,22 @@ pub struct StaffCreate {
     pub phone: String,
     pub access: String,
     pub calendar_color: String
+}
+
+#[derive(Serialize, Deserialize, AsChangeset, Insertable)]
+#[table_name = "staff_service"]
+pub struct StaffServiceCreate {
+    pub staff_id: i32,
+    pub service_variant_id: i32
+}
+
+#[derive(Eq, PartialEq, Identifiable, Serialize, Deserialize, Queryable, Debug)]
+#[primary_key(staff_service_id)]
+#[table_name = "staff_service"]
+pub struct StaffService {
+    pub staff_service_id: i32,
+    pub staff_id: i32,
+    pub service_variant_id: i32
 }
 
 #[derive(Eq, PartialEq, Identifiable, Serialize, Deserialize, Queryable)]
@@ -66,6 +89,12 @@ pub struct StaffHours {
 pub struct StaffWithHours {
     pub staff: Staff,
     pub staff_hours: Vec<StaffHours>
+}
+
+#[derive(Serialize)]
+pub struct StaffWithServices {
+    pub name: String,
+    pub services: Vec<FullService>
 }
 
 impl Staff {
@@ -192,6 +221,39 @@ impl Staff {
         let res = diesel::delete(
                 staff::table
                     .filter(staff::staff_id.eq(id))
+            )
+            .execute(&conn)?;
+
+        Ok(res)
+    }
+
+    pub fn find_service(id: i32) -> QueryResult<Vec<StaffService>> {
+        let conn = db::establish_connection();
+
+        staff_service.filter(staff_service::service_variant_id.eq(id)).load::<StaffService>(&conn)
+    }
+
+    pub fn add_service(set_staff_id: i32, set_service_id: i32) -> Result<(), ApiError> {
+        let conn = db::establish_connection();
+
+        let new_staff_service = StaffServiceCreate {
+            staff_id: set_staff_id,
+            service_variant_id: set_service_id
+        };
+
+        diesel::insert_into(staff_service::table)
+            .values(new_staff_service)
+            .execute(&conn);
+
+        Ok(())
+    }
+
+    pub fn delete_service(id: i32)-> Result<usize, ApiError> {
+        let conn = db::establish_connection();
+
+        let res = diesel::delete(
+                staff_service::table
+                    .filter(staff_service::staff_service_id.eq(id))
             )
             .execute(&conn)?;
 

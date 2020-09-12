@@ -50,6 +50,14 @@ table! {
 }
 
 table! {
+    staff_service (staff_service_id) {
+        staff_service_id -> Int4,
+        staff_id -> Int4,
+        service_variant_id -> Int4,
+    }
+}
+
+table! {
     store (store_id) {
         store_id -> Int4,
         name -> Varchar,
@@ -79,7 +87,7 @@ table! {
     }
 }
 
-joinable!(staff_hours -> staff (staff_id));
+joinable!(staff_service -> service_variant (service_variant_id));
 
 allow_tables_to_appear_in_same_query!(
     block_extra_time,
@@ -87,6 +95,7 @@ allow_tables_to_appear_in_same_query!(
     service_variant,
     staff,
     staff_hours,
+    staff_service,
     store,
     store_address,
     store_hours,
