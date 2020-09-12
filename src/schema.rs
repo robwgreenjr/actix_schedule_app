@@ -54,6 +54,7 @@ table! {
         staff_service_id -> Int4,
         staff_id -> Int4,
         service_variant_id -> Int4,
+        is_active -> Nullable<Int4>,
     }
 }
 

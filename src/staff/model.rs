@@ -47,7 +47,8 @@ pub struct StaffCreate {
 #[table_name = "staff_service"]
 pub struct StaffServiceCreate {
     pub staff_id: i32,
-    pub service_variant_id: i32
+    pub service_variant_id: i32,
+    pub is_active: i32
 }
 
 #[derive(Eq, PartialEq, Identifiable, Serialize, Deserialize, Queryable, Debug)]
@@ -56,7 +57,8 @@ pub struct StaffServiceCreate {
 pub struct StaffService {
     pub staff_service_id: i32,
     pub staff_id: i32,
-    pub service_variant_id: i32
+    pub service_variant_id: i32,
+    pub is_active: Option<i32>
 }
 
 #[derive(Eq, PartialEq, Identifiable, Serialize, Deserialize, Queryable)]
@@ -265,7 +267,7 @@ impl Staff {
                 blocked_time: block_extra,
                 variants: vec![current_variant]
             };
-            
+
             all_staff_services.push(complete_staff_service);
         }
 
@@ -283,7 +285,8 @@ impl Staff {
 
         let new_staff_service = StaffServiceCreate {
             staff_id: set_staff_id,
-            service_variant_id: set_service_id
+            service_variant_id: set_service_id,
+            is_active: 1
         };
 
         diesel::insert_into(staff_service::table)
@@ -293,13 +296,28 @@ impl Staff {
         Ok(())
     }
 
+    pub fn update_staff_services(current_staff_id: i32, updated_services: Vec<StaffServiceCreate>) -> QueryResult<()> {
+        let conn = db::establish_connection();
+
+        diesel::delete(staff_service::table
+            .filter(staff_service::staff_service_id
+            .eq(current_staff_id)))
+            .execute(&conn)?;
+
+        for current_staff_service in updated_services {
+            diesel::insert_into(staff_service::table)
+                .values(current_staff_service)
+                .execute(&conn);
+        }
+
+        Ok(())
+    }
+
     pub fn delete_service(id: i32)-> Result<usize, ApiError> {
         let conn = db::establish_connection();
 
-        let res = diesel::delete(
-                staff_service::table
-                    .filter(staff_service::staff_service_id.eq(id))
-            )
+        let res = diesel::delete(staff_service::table
+            .filter(staff_service::staff_service_id.eq(id)))
             .execute(&conn)?;
 
         Ok(res)
