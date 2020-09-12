@@ -57,6 +57,7 @@ pub struct StaffServiceCreate {
 pub struct StaffService {
     pub staff_service_id: i32,
     pub staff_id: i32,
+    pub service_id: i32,
     pub service_variant_id: i32,
     pub is_active: Option<i32>
 }
@@ -72,6 +73,16 @@ pub struct Staff {
     pub email: String,
     pub phone: Option<String>,
     pub access: Option<String>,
+    pub calendar_color: Option<String>
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BasicStaffInfo {
+    pub staff_id: i32,
+    pub first_name: String,
+    pub last_name: String,
+    pub email: String,
+    pub phone: Option<String>,
     pub calendar_color: Option<String>
 }
 
@@ -118,6 +129,23 @@ impl Staff {
         let conn = db::establish_connection();
 
         staff.filter(staff::staff_id.eq(id)).first::<Self>(&conn)
+    }
+
+    pub fn find_basic(id: i32) -> QueryResult<BasicStaffInfo> {
+        let conn = db::establish_connection();
+
+        let staff_data: Staff = staff.filter(staff::staff_id.eq(id)).first::<Self>(&conn)?;
+
+        let staff_member = BasicStaffInfo {
+            staff_id: staff_data.staff_id,
+            first_name: staff_data.first_name,
+            last_name: staff_data.last_name,
+            email: staff_data.email,
+            phone: staff_data.phone,
+            calendar_color: staff_data.calendar_color
+        };
+
+        Ok(staff_member)
     }
 
     pub fn find_all_staff_hours() -> QueryResult<Vec<StaffWithHours>> {
@@ -236,6 +264,12 @@ impl Staff {
             .execute(&conn)?;
 
         Ok(res)
+    }
+
+    pub fn find_staff_with_service(passed_service_id: i32) -> QueryResult<Vec<StaffService>> {
+        let conn = db::establish_connection();
+
+        staff_service.filter(staff_service::service_id.eq(passed_service_id)).load::<StaffService>(&conn)
     }
 
     pub fn find_service(id: i32) -> QueryResult<StaffWithServices> {

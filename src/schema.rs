@@ -53,6 +53,7 @@ table! {
     staff_service (staff_service_id) {
         staff_service_id -> Int4,
         staff_id -> Int4,
+        service_id -> Int4,
         service_variant_id -> Int4,
         is_active -> Nullable<Int4>,
     }
@@ -88,6 +89,7 @@ table! {
     }
 }
 
+joinable!(staff_service -> service (service_id));
 joinable!(staff_service -> service_variant (service_variant_id));
 
 allow_tables_to_appear_in_same_query!(

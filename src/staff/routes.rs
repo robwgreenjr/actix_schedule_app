@@ -1,5 +1,6 @@
 use crate::api_error::ApiError;
 use crate::staff::{Staff, StaffCreate, StaffId, StaffHourId, StaffServiceId, StaffHoursCreate, StaffServiceCreate};
+use crate::service::{ServiceId};
 use actix_web::{get, post, put, delete, web, HttpResponse};
 use serde_json::json;
 
@@ -12,6 +13,12 @@ async fn find_all() -> Result<HttpResponse, ApiError> {
 #[get("/staff_services/{staff_service_id}")]
 async fn find_all_services(id: web::Path<StaffServiceId>) -> Result<HttpResponse, ApiError> {
     let staff_services = Staff::find_service(id.staff_service_id)?;
+    Ok(HttpResponse::Ok().json(staff_services))
+}
+
+#[get("/staff_with_service/{service_id}")]
+async fn find_staff_with_service(id: web::Path<ServiceId>) -> Result<HttpResponse, ApiError> {
+    let staff_services = Staff::find_staff_with_service(id.service_id)?;
     Ok(HttpResponse::Ok().json(staff_services))
 }
 
@@ -73,6 +80,7 @@ async fn delete(id: web::Path<StaffId>) -> Result<HttpResponse, ApiError> {
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(find_all);
     cfg.service(find_all_services);
+    cfg.service(find_staff_with_service);
     cfg.service(find_all_staff_hours);
     cfg.service(find);
     cfg.service(find_staff_hours);

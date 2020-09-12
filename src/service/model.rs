@@ -5,6 +5,11 @@ use chrono::{NaiveTime};
 use crate::diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
+pub use crate::staff::model::{
+    Staff,
+    BasicStaffInfo
+};
+
 #[derive(Deserialize)]
 pub struct ServiceId {
     pub service_id: i32
@@ -26,6 +31,15 @@ pub struct FullService {
     pub blocked_time: BlockExtraTime,
     pub variants: Vec<ServiceVariant>
 }
+
+#[derive(Serialize)]
+pub struct FullStaffService {
+    pub service: Service,
+    pub blocked_time: BlockExtraTime,
+    pub variants: Vec<ServiceVariant>,
+    pub staff: Vec<BasicStaffInfo>
+}
+
 
 #[derive(Deserialize)]
 pub struct GenerateService {
@@ -114,7 +128,7 @@ pub struct UpdateServiceAll {
 }
 
 impl Service {
-    pub fn find_all() -> QueryResult<Vec<FullService>> {
+    pub fn find_all() -> QueryResult<Vec<FullStaffService>> {
         let conn = db::establish_connection();
 
         let all_services = service::table.load::<Service>(&conn)?;
@@ -125,35 +139,54 @@ impl Service {
             .load::<ServiceVariant>(&conn)?
             .grouped_by(&all_services);
 
-        let mut services_final_list: Vec<FullService> = vec![];
+        let mut services_final_list: Vec<FullStaffService> = vec![];
         
         let mut temp_iter = 0;
         for current_service in all_services {
-            let current_service = FullService {
+            let mut all_staff_in_service: Vec<BasicStaffInfo> = vec![]; 
+
+            let staff_service_list = Staff::find_staff_with_service(current_service.service_id)?;
+
+            for service_item in staff_service_list {
+                let temp_staff_info = Staff::find_basic(service_item.staff_id)?;
+                all_staff_in_service.push(temp_staff_info);
+            }
+
+            let current_service = FullStaffService {
                 service: current_service,
                 blocked_time: all_blocked_time[temp_iter][0].clone(),
-                variants: all_services_variants[temp_iter].clone()
+                variants: all_services_variants[temp_iter].clone(),
+                staff: all_staff_in_service
             };
 
             services_final_list.push(current_service);
             temp_iter += 1;
+            
         }
-
 
         Ok(services_final_list)
     }
 
-    pub fn find(id: i32) -> QueryResult<FullService> {
+    pub fn find(id: i32) -> QueryResult<FullStaffService> {
         let conn = db::establish_connection();
 
         let service_entity: Self = service.filter(service::service_id.eq(id)).first::<Self>(&conn)?;
         let block_extra: BlockExtraTime = block_extra_time.filter(block_extra_time::service_id.eq(id)).first::<BlockExtraTime>(&conn)?;
         let service_variants: Vec<ServiceVariant> = service_variant.filter(service_variant::service_id.eq(id)).load::<ServiceVariant>(&conn)?;
+        let mut all_staff_in_service: Vec<BasicStaffInfo> = vec![]; 
 
-        let full_service = FullService {
+        let staff_service_list = Staff::find_staff_with_service(service_entity.service_id)?;
+
+        for service_item in staff_service_list {
+            let temp_staff_info = Staff::find_basic(service_item.staff_id)?;
+            all_staff_in_service.push(temp_staff_info);
+        }
+
+        let full_service = FullStaffService {
             service: service_entity,
             blocked_time: block_extra,
-            variants: service_variants
+            variants: service_variants,
+            staff: all_staff_in_service
         };
 
         Ok(full_service)
