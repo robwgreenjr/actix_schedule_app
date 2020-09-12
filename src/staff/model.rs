@@ -1,11 +1,20 @@
 use crate::db;
 use crate::api_error::ApiError;
-use crate::{schema::staff::{self, dsl::*}, schema::staff_hours::{self, dsl::*}, schema::staff_service::{self, dsl::*}};
+use crate::{
+    schema::staff::{self, dsl::*}, 
+    schema::staff_hours::{self, dsl::*}, 
+    schema::staff_service::{self, dsl::*}, 
+    schema::service_variant::{self, dsl::*},
+    schema::service::{self, dsl::*},
+    schema::block_extra_time::{self, dsl::*}
+};
 use chrono::{NaiveTime};
 use crate::diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-pub use crate::service::model::{FullService};
+pub use crate::service::model::{
+    FullService, BlockExtraTime, ServiceVariant, Service
+};
 
 #[derive(Deserialize)]
 pub struct StaffId {
@@ -93,7 +102,7 @@ pub struct StaffWithHours {
 
 #[derive(Serialize)]
 pub struct StaffWithServices {
-    pub name: String,
+    pub staff: Staff,
     pub services: Vec<FullService>
 }
 
@@ -227,10 +236,46 @@ impl Staff {
         Ok(res)
     }
 
-    pub fn find_service(id: i32) -> QueryResult<Vec<StaffService>> {
+    pub fn find_service(id: i32) -> QueryResult<StaffWithServices> {
         let conn = db::establish_connection();
 
-        staff_service.filter(staff_service::service_variant_id.eq(id)).load::<StaffService>(&conn)
+        let staff_member = staff.filter(staff::staff_id.eq(id)).first::<Self>(&conn)?;
+        let staff_service_join = staff_service
+            .filter(staff_service::staff_id.eq(id))
+            .load::<StaffService>(&conn)?;
+
+        let mut all_staff_services: Vec<FullService> = vec![];
+
+        for current_service in staff_service_join {
+            let current_variant: ServiceVariant = service_variant
+                .filter(service_variant::service_variant_id
+                .eq(current_service.service_variant_id))
+                .first::<ServiceVariant>(&conn)?;
+            let current_service: Service = service
+                .filter(service::service_id
+                .eq(current_variant.service_id))
+                .first::<Service>(&conn)?;
+            let block_extra: BlockExtraTime = block_extra_time
+                .filter(block_extra_time::service_id
+                .eq(current_service.service_id))
+                .first::<BlockExtraTime>(&conn)?;
+            
+            let complete_staff_service = FullService {
+                service: current_service,
+                blocked_time: block_extra,
+                variants: vec![current_variant]
+            };
+            
+            all_staff_services.push(complete_staff_service);
+        }
+
+        let final_staff_with_service = StaffWithServices {
+            staff: staff_member,
+            services: all_staff_services
+        };
+       
+
+        Ok(final_staff_with_service)
     }
 
     pub fn add_service(set_staff_id: i32, set_service_id: i32) -> Result<(), ApiError> {
