@@ -4,7 +4,8 @@ extern crate log;
 extern crate diesel;
 extern crate diesel_migrations;
 
-use actix_web::{App, HttpServer};
+use actix_web::{App, HttpServer, http};
+use actix_cors::Cors;
 use dotenv::dotenv;
 use listenfd::ListenFd;
 use std::env;
@@ -24,6 +25,14 @@ async fn main() -> std::io::Result<()> {
     let mut listenfd = ListenFd::from_env();
     let mut server = HttpServer::new(|| {
         App::new()
+        .wrap(
+            Cors::new()
+                .allowed_origin("http://localhost:3000")
+                .allowed_methods(vec!["GET", "POST"])
+                .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+                .allowed_header(http::header::CONTENT_TYPE)
+                .max_age(3600)
+                .finish())
             .configure(staff::init_routes)
             .configure(store::init_routes)
             .configure(service::init_routes)

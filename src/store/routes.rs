@@ -9,6 +9,12 @@ async fn find_all() -> Result<HttpResponse, ApiError> {
     Ok(HttpResponse::Ok().json(store))
 }
 
+#[get("/store_info/{store_id}")]
+async fn find_all_info(id: web::Path<StoreId>) -> Result<HttpResponse, ApiError> {
+    let store_info = Store::find_all_data(id.store_id)?;
+    Ok(HttpResponse::Ok().json(store_info))
+}
+
 #[get("/store_hours")]
 async fn find_all_store_hours() -> Result<HttpResponse, ApiError> {
     let store = Store::find_all_store_hours()?;
@@ -77,6 +83,7 @@ async fn delete(id: web::Path<StoreId>) -> Result<HttpResponse, ApiError> {
 
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(find_all);
+    cfg.service(find_all_info);
     cfg.service(find_all_store_hours);
     cfg.service(find);
     cfg.service(find_address);

@@ -12,6 +12,7 @@ lto = true
 [dependencies]
 actix-web = "2.0"
 actix-rt = "1.1.1"
+actix-cors = "0.2.0"
 chrono = { version = "0.4", features = ["serde"] }
 diesel = { version = "1.4", features = ["postgres", "r2d2", "uuid", "chrono"] }
 diesel_migrations = "1.4"

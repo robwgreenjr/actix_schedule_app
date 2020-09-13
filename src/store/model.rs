@@ -34,6 +34,13 @@ pub struct Store {
     pub name: String
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FullStore {
+    pub name: String,
+    pub address: StoreAddress,
+    pub hours: Vec<StoreHours>
+}
+
 #[derive(Serialize, Deserialize, AsChangeset, Insertable)]
 #[table_name = "store_address"]
 pub struct StoreAddressCreate {
@@ -94,6 +101,31 @@ impl Store {
         store.order(store::store_id.asc()).load::<Self>(&conn)
     }
 
+    pub fn find_all_data(id: i32) -> QueryResult<FullStore> {
+        let conn = db::establish_connection();
+
+        let store_name = store
+            .filter(store::store_id
+            .eq(id))
+            .first::<Self>(&conn)?;
+        let store_address_data = store_address
+            .filter(store_address::store_id
+            .eq(id))
+            .first::<StoreAddress>(&conn)?;
+        let store_hours_data = store_hours
+            .filter(store_hours::store_id
+            .eq(id))
+            .load::<StoreHours>(&conn)?;
+
+        let full_store_data = FullStore {
+            name: store_name.name,
+            address: store_address_data,
+            hours: store_hours_data
+        };
+
+        Ok(full_store_data)
+    }
+
     pub fn find(id: i32) -> QueryResult<Self> {
         let conn = db::establish_connection();
     
@@ -127,7 +159,10 @@ impl Store {
     pub fn find_store_hours(id: i32) -> QueryResult<StoreWithHours> {
         let conn = db::establish_connection();
 
-        let store_member = store.filter(store::store_id.eq(id)).first::<Self>(&conn)?;
+        let store_member = store
+            .filter(store::store_id
+            .eq(id))
+            .first::<Self>(&conn)?;
         let store_member_hours = store_hours
             .filter(store_hours::store_id.eq(id))
             .load::<StoreHours>(&conn)?;
@@ -169,7 +204,9 @@ impl Store {
             hours_list.push(day_hours);
         }
 
-        diesel::insert_into(store_hours::table).values(hours_list).execute(&conn)?;
+        diesel::insert_into(store_hours::table)
+            .values(hours_list)
+            .execute(&conn)?;
 
         Ok(store_created)
     }
@@ -235,15 +272,18 @@ impl Store {
 
         // also make sure to delete other store data
         diesel::delete(store_hours::table)
-            .filter(store_hours::store_id.eq(id))
+            .filter(store_hours::store_id
+            .eq(id))
             .execute(&conn)?;
         diesel::delete(store_address::table)
-            .filter(store_address::store_id.eq(id))
+            .filter(store_address::store_id
+            .eq(id))
             .execute(&conn)?;
 
         let res = diesel::delete(
                 store::table
-                    .filter(store::store_id.eq(id))
+                    .filter(store::store_id
+                    .eq(id))
             )
             .execute(&conn)?;
 
